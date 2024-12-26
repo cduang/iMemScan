@@ -17,7 +17,7 @@ jobs:
 
       - name: Set up Xcode
         run: |
-          # 可以设置 Xcode 版本，如果有必要
+          # 根据需要设置 Xcode 版本，通常 macOS 最新版默认包括最新 Xcode
           sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
 
       - name: Install dependencies
@@ -31,14 +31,14 @@ jobs:
           xcodebuild -exportArchive -archivePath ${{ github.workspace }}/build/iMemScan.xcarchive -exportOptionsPlist exportOptions.plist -exportPath ${{ github.workspace }}/build
 
       - name: Upload IPA to release
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: iMemScan.ipa
           path: ${{ github.workspace }}/build/iMemScan.ipa
 
       - name: Create a GitHub Release
         id: create_release
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v1  # 确保使用最新版本
         with:
           tag_name: v${{ github.run_number }}
           release_name: Release ${{ github.run_number }}
