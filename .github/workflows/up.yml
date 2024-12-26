@@ -3,10 +3,10 @@ name: Build and Release iOS App
 on:
   push:
     branches:
-      - main  # 触发构建的分支
+      - main
   release:
     types:
-      - published  # 在发布时触发
+      - published
 
 jobs:
   build:
@@ -17,16 +17,15 @@ jobs:
 
       - name: Set up Xcode
         run: |
-          # 根据需要设置 Xcode 版本
           sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
+
       - name: List directory contents
         run: |
           ls -R ${{ github.workspace }}
-          pwd
 
       - name: Build the iOS app
         run: |
-          xcodebuild -workspace iMemScan.xcworkspace -scheme iMemScan -configuration Release -archivePath ${{ github.workspace }}/build/iMemScan.xcarchive archive
+          xcodebuild -project iMemScan.xcodeproj -scheme iMemScan -configuration Release -archivePath ${{ github.workspace }}/build/iMemScan.xcarchive archive
           xcodebuild -exportArchive -archivePath ${{ github.workspace }}/build/iMemScan.xcarchive -exportOptionsPlist exportOptions.plist -exportPath ${{ github.workspace }}/build
 
       - name: Upload IPA to release
@@ -48,4 +47,3 @@ jobs:
             ${{ github.workspace }}/build/iMemScan.ipa
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
