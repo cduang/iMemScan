@@ -1,61 +1,52 @@
-name: Build and Upload iOS App
+name: Build and Release iOS App
 
 on:
   push:
     branches:
-      - main
+      - main  # 你想触发构建的分支
   release:
-    types: [created]
+    types:
+      - published  # 在发布时触发
 
 jobs:
   build:
     runs-on: macos-latest
-
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v3
+      - name: Checkout Repository
+        uses: actions/checkout@v2
 
       - name: Set up Xcode
-        uses: maxim-lobanov/setup-xcode@v1
+        run: |
+          # 可以设置 Xcode 版本，如果有必要
+          sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
+
+      - name: Install dependencies
+        run: |
+          # 根据你的项目需要，可以添加相应的依赖包安装命令
+          pod install  # 如果你用的是 CocoaPods
+
+      - name: Build the iOS app
+        run: |
+          xcodebuild -workspace iMemScan.xcworkspace -scheme iMemScan -configuration Release -archivePath ${{ github.workspace }}/build/iMemScan.xcarchive archive
+          xcodebuild -exportArchive -archivePath ${{ github.workspace }}/build/iMemScan.xcarchive -exportOptionsPlist exportOptions.plist -exportPath ${{ github.workspace }}/build
+
+      - name: Upload IPA to release
+        uses: actions/upload-artifact@v2
         with:
-          xcode-version: latest-stable
+          name: iMemScan.ipa
+          path: ${{ github.workspace }}/build/iMemScan.ipa
 
-      - name: List available schemes
-        run: |
-          xcodebuild -project 'iMemScan.xcodeproj' -list
-
-      - name: Build the app
-        run: |
-          SCHEMES=$(xcodebuild -project 'iMemScan.xcodeproj' -list | grep "Schemes:" | awk '{print $2}')
-          echo "Available schemes: $SCHEMES"
-          if [[ "$SCHEMES" != *"iMemScan"* ]]; then
-            echo "Scheme iMemScan not found in the project."
-            exit 1
-
-          fi
-          xcodebuild -quiet -jobs $(sysctl -n hw.ncpu) -project 'iMemScan.xcodeproj' -scheme iMemScan -configuration Release -arch arm64 -sdk iphoneos -derivedDataPath $TMPDIR/iMemScan-build \
-          CODE_SIGNING_ALLOWED=NO DSTROOT=$TMPDIR/iMemScan-build/install
-
-      - name: Move the built app to the build directory
-        run: |
-          APP_BUNDLE_PATH=$(find $TMPDIR/iMemScan-build/Build/Products/Release-iphoneos/ -name 'iMemScan.app')
-          mkdir -p build/Payload
-          mv "$APP_BUNDLE_PATH" build/Payload
-
-      - name: Create zip archive
-        run: |
-          cd build/Payload
-          zip -r9 iMemScanTS.tipa .
-
-      - name: Find and delete .DS_Store files
-        run: |
-          find . -name ".DS_Store" -delete
-
-      - name: Upload to Release
-        if: github.event_name == 'release'
-        uses: svenstaro/upload-release-action@v2
+      - name: Create a GitHub Release
+        id: create_release
+        uses: softprops/action-gh-release@v1
         with:
-          repo_token: ${{ secrets.GITHUB_TOKEN }}
-          file: build/Payload/iMemScanTS.tipa
-          tag: ${{ github.ref }}
-          overwrite: true
+          tag_name: v${{ github.run_number }}
+          release_name: Release ${{ github.run_number }}
+          body: |
+            ## New Release
+            This release contains the latest version of the iMemScan app.
+          files: |
+            ${{ github.workspace }}/build/iMemScan.ipa
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
